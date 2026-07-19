@@ -1,0 +1,8 @@
+# Author: Lucas Mohler
+# Helm chart metadata for the Student Survey full-stack application.
+apiVersion: v2
+name: student-survey
+description: Full-stack Student Survey app (React frontend, FastAPI/SQLModel backend, MySQL persistence) for SWE 645 HW3.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

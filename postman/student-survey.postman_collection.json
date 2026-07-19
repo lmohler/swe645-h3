@@ -1,0 +1,65 @@
+{
+  "info": {
+    "name": "Student Survey API (Lucas Mohler)",
+    "description": "CRUD requests for the FastAPI/SQLModel Student Survey backend. Set the base_url collection variable to http://localhost:8000 for local dev or http://<node-ip>:30080 for the deployed NodePort (proxied through nginx).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "survey_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/health"
+      }
+    },
+    {
+      "name": "Create Survey",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/api/surveys",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Doe\",\n  \"street_address\": \"123 Main St\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0100\",\n  \"email\": \"jane.doe@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\"campus\", \"sports\"],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"very_likely\"\n}"
+        }
+      }
+    },
+    {
+      "name": "List Surveys",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/surveys"
+      }
+    },
+    {
+      "name": "Get Survey by ID",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/surveys/{{survey_id}}"
+      }
+    },
+    {
+      "name": "Update Survey",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/api/surveys/{{survey_id}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Smith\",\n  \"street_address\": \"123 Main St\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0100\",\n  \"email\": \"jane.smith@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\"dorm_rooms\"],\n  \"referral_source\": \"friends\",\n  \"recommend_likelihood\": \"likely\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Delete Survey",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/api/surveys/{{survey_id}}"
+      }
+    }
+  ]
+}

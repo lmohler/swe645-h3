@@ -1,0 +1,10 @@
+Student Survey app deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Verify all three Pods are Running:
+  kubectl get pods -n {{ .Release.Namespace }}
+
+Access the app (NodePort service):
+  http://<your-node-or-EC2-public-DNS>:{{ .Values.frontend.service.nodePort }}
+
+Backend Swagger docs (via the same host, proxied through nginx):
+  http://<your-node-or-EC2-public-DNS>:{{ .Values.frontend.service.nodePort }}/docs

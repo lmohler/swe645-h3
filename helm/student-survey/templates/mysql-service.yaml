@@ -1,0 +1,15 @@
+# Author: Lucas Mohler
+# ClusterIP Service giving the backend Pod a stable DNS name (survey-mysql)
+# to reach the MySQL Pod.
+apiVersion: v1
+kind: Service
+metadata:
+  name: survey-mysql
+  labels:
+    {{- include "student-survey.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: survey-mysql
+  ports:
+    - port: 3306
+      targetPort: 3306

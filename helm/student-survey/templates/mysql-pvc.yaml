@@ -1,0 +1,14 @@
+# Author: Lucas Mohler
+# Persistent storage for the MySQL data directory so survey data survives Pod restarts.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: survey-mysql-pvc
+  labels:
+    {{- include "student-survey.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.mysql.persistence.size }}

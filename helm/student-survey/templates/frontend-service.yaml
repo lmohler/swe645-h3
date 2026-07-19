@@ -1,0 +1,19 @@
+# Author: Lucas Mohler
+# NodePort Service exposing the frontend outside the cluster, mirroring the
+# NodePort pattern used for the HW2 deployment.
+apiVersion: v1
+kind: Service
+metadata:
+  name: survey-frontend
+  labels:
+    {{- include "student-survey.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  selector:
+    app: survey-frontend
+  ports:
+    - port: {{ .Values.frontend.service.port }}
+      targetPort: 80
+      {{- if eq .Values.frontend.service.type "NodePort" }}
+      nodePort: {{ .Values.frontend.service.nodePort }}
+      {{- end }}

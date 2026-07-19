@@ -1,0 +1,15 @@
+# Author: Lucas Mohler
+# Internal-only ClusterIP Service for the backend; the frontend's nginx
+# reverse-proxies to this Service by its DNS name (survey-backend).
+apiVersion: v1
+kind: Service
+metadata:
+  name: survey-backend
+  labels:
+    {{- include "student-survey.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: survey-backend
+  ports:
+    - port: {{ .Values.backend.service.port }}
+      targetPort: 8000
