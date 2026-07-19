@@ -7,9 +7,11 @@
 
 ---
 
-## What Was Built
+## What I Built
 
-A full-stack rebuild of the HW2 static survey form: a React single-page app talks to a FastAPI + SQLModel REST API, which persists submissions in MySQL. All CRUD operations (create, view all, edit, delete a survey) are implemented end-to-end and exposed through a documented REST API. Everything is containerized with Docker and deployed to Kubernetes with a single Helm chart — one Pod for the frontend, one for the backend, one for MySQL.
+For HW3 I rebuilt my HW2 static survey form as a real full-stack app. The front end is a React single-page app, the back end is a FastAPI + SQLModel REST API, and everything gets persisted in MySQL. All four CRUD operations — create, view all, edit, and delete a survey — work end to end and are backed by a documented REST API. I containerized both halves with Docker and deploy them together with one Helm chart: a Pod for the frontend, a Pod for the backend, and a Pod for MySQL.
+
+This particular folder, `Repo-v2`, is the version I actually pushed to GitHub and deployed from. It's the same source as my working copy, minus the local dev clutter (virtualenv, `node_modules`, a throwaway SQLite file) that has no business being in version control. See the setup guide for exactly how I got this onto my EC2 instance and running.
 
 ### Architecture
 
@@ -26,12 +28,12 @@ Browser
 [mysql Pod: MySQL 8.4 + PersistentVolumeClaim]
 ```
 
-The browser only ever talks to the frontend's NodePort — nginx reverse-proxies API calls to the backend Service, so there's no CORS to configure in production and no separately-exposed backend port.
+The browser only ever talks to the frontend's NodePort — nginx reverse-proxies the API calls back to the backend Service, so I don't have to deal with CORS in production, and the backend never needs its own exposed port.
 
-### Repository Structure
+### Repo Layout
 
 ```
-Repo/
+Repo-v2/
 ├── backend/                # FastAPI + SQLModel REST API
 │   ├── app/
 │   │   ├── main.py         # app setup, CORS, DB-ready retry, /health
@@ -44,7 +46,7 @@ Repo/
 ├── frontend/                # React (Vite) SPA
 │   ├── src/
 │   │   ├── App.jsx, api.js, options.js
-│   │   └── components/{SurveyForm,SurveyList}.jsx
+│   │   └── components/{SurveyForm,SurveyList,SurveyResultsModal}.jsx
 │   ├── nginx.conf           # serves the SPA + proxies /api, /docs to backend
 │   └── Dockerfile
 ├── helm/student-survey/     # Helm chart (Chart.yaml, values.yaml, templates/)
@@ -52,50 +54,19 @@ Repo/
 └── README.md
 ```
 
-### Design Note: Navigation
+### A note on why there's no React Router
 
-The "New Survey" / "View Surveys" toggle in `App.jsx` is a plain `useState` tab switcher rather than `react-router-dom`. With only two views and no shareable per-record URLs required by the assignment, a router added a dependency without adding capability. `react-router-dom` is the more scalable choice for this app if it ever grows past two views (e.g. a distinct URL per survey for editing) — see `Link`/`useNavigate`/`useParams` in the React Router docs.
+The "New Survey" / "View Surveys" toggle in `App.jsx` is just a `useState` variable flipping between two components, not `react-router-dom`. I went back and forth on this, but with only two views and nothing that needs its own shareable URL, pulling in a router felt like adding a dependency for a problem I didn't have. If I ever add a dedicated URL per survey (say, for direct-linking to an edit form), `react-router-dom`'s `Link`/`useNavigate`/`useParams` would be the right call at that point.
 
-### Student Survey Fields
+### Survey Fields
 
-Matches the assignment spec exactly: first/last name, street address, city, state, zip, phone, email, and survey date (all required); "liked most about campus" as multi-select checkboxes (students, location, campus, atmosphere, dorm rooms, sports); referral source as a single choice (friends, television, internet, other); and recommendation likelihood as a single choice (Very Likely, Likely, Unlikely).
-
----
-
-## Local Development (no Docker/Kubernetes required)
-
-### Backend
-
-```bash
-cd backend
-python -m venv .venv
-.venv/Scripts/activate        # Windows; use `source .venv/bin/activate` on macOS/Linux
-pip install -r requirements.txt
-
-# Quick smoke test with SQLite instead of MySQL:
-set DATABASE_URL=sqlite:///./local.db      # Windows cmd; use `export` on bash/macOS
-uvicorn app.main:app --reload --port 8000
-```
-
-Visit `http://localhost:8000/docs` for interactive Swagger docs, or `http://localhost:8000/health` for a liveness check.
-
-To run against a real local MySQL instead of SQLite, set `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` instead of `DATABASE_URL`.
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Visit `http://localhost:5173`. The Vite dev server proxies `/api` to `http://127.0.0.1:8000`, so the backend above must be running first.
-
-Both the backend CRUD endpoints and the frontend-through-proxy flow were verified locally (create → list → update → delete) before containerizing.
+These match the assignment spec exactly: first/last name, street address, city, state, zip, phone, email, and survey date (all required); "liked most about campus" as multi-select checkboxes (students, location, campus, atmosphere, dorm rooms, sports); referral source as a single choice (friends, television, internet, other); and recommendation likelihood as a single choice (Very Likely, Likely, Unlikely).
 
 ---
 
-## Building & Pushing the Docker Images
+## How I Built & Pushed the Docker Images
+
+I did this straight from my EC2 instance after cloning the repo there — see the setup guide for the full walkthrough. In short, from inside the cloned repo:
 
 ```bash
 # Backend
@@ -109,9 +80,9 @@ docker build -t lmohler/survey-frontend:1.0.0 .
 docker push lmohler/survey-frontend:1.0.0
 ```
 
-Replace `lmohler` with your own Docker Hub namespace if you fork this, and update `helm/student-survey/values.yaml` (`frontend.image.repository` / `backend.image.repository`) to match.
+If you're following along with your own Docker Hub account, swap `lmohler` for your namespace everywhere, including `helm/student-survey/values.yaml` (`frontend.image.repository` / `backend.image.repository`).
 
-To test either image standalone before deploying:
+To sanity-check either image on its own before touching Kubernetes:
 
 ```bash
 docker run --rm -p 8000:8000 -e DATABASE_URL=sqlite:////tmp/local.db lmohler/survey-backend:1.0.0
@@ -122,16 +93,15 @@ docker run --rm -p 8080:80 lmohler/survey-frontend:1.0.0   # /api calls will 502
 
 ## Deploying to Kubernetes
 
-This chart targets the same AWS EC2 + Rancher/K3s cluster used for HW2.
+I'm running this on the same EC2 + Rancher/K3s cluster I set up for HW2, so `kubectl` and `helm` on that box are already pointed at it — no kubeconfig wrangling needed if you're doing everything from the EC2 instance like I did.
 
-1. Point `kubectl`/`helm` at that cluster:
+1. Confirm the cluster's reachable:
 
    ```bash
-   export KUBECONFIG=/path/to/my-k8s-cluster.yaml   # from the HW2 submission
-   kubectl get nodes                                 # sanity check
+   kubectl get nodes
    ```
 
-2. Open the new NodePort in the EC2 security group (alongside the existing `30007` from HW2): add an inbound rule for TCP `30080` from `0.0.0.0/0`.
+2. Open the new NodePort in the EC2 security group (this is in addition to the `30007` I already had open from HW2): inbound rule for TCP `30080` from `0.0.0.0/0`.
 
 3. Install the chart:
 
@@ -142,7 +112,7 @@ This chart targets the same AWS EC2 + Rancher/K3s cluster used for HW2.
      --set frontend.image.tag=1.0.0
    ```
 
-   For production-style credentials, don't rely on the defaults in `values.yaml` — override them:
+   I didn't leave the placeholder MySQL credentials in `values.yaml` for my actual deployment — I overrode them at install time instead:
 
    ```bash
    helm install student-survey ./student-survey \
@@ -150,28 +120,28 @@ This chart targets the same AWS EC2 + Rancher/K3s cluster used for HW2.
      --set mysql.password=<strong-password>
    ```
 
-4. Verify:
+4. Check that it actually came up:
 
    ```bash
-   kubectl get pods      # expect survey-frontend, survey-backend, survey-mysql all Running
+   kubectl get pods      # survey-frontend, survey-backend, survey-mysql should all be Running
    kubectl get svc survey-frontend   # confirm NodePort 30080
    ```
 
-5. Browse to `http://<EC2-public-DNS>:30080`. Swagger docs are at the same host under `/docs`.
+5. Then just browse to `http://<my-EC2-public-DNS>:30080`. Swagger docs live at the same host under `/docs`.
 
-To roll out a new image after making changes:
+Rolling out a new image later is just:
 
 ```bash
 helm upgrade student-survey ./student-survey --set backend.image.tag=1.0.1
 ```
 
-`helm uninstall student-survey` tears the whole app down, including the MySQL PVC's claim (the underlying PV's reclaim policy determines whether the data is actually deleted).
+`helm uninstall student-survey` tears the whole thing down, MySQL PVC claim included (whether the underlying data actually gets deleted depends on the PV's reclaim policy).
 
 ---
 
 ## Testing with Postman
 
-Import `postman/student-survey.postman_collection.json`. It defines a `base_url` collection variable — set it to `http://localhost:8000` while developing locally, or `http://<EC2-public-DNS>:30080` once deployed (nginx proxies `/api` through to the backend either way). The collection covers health check, create, list, get-by-id, update, and delete.
+I used my own `postman/student-survey.postman_collection.json` to verify the backend before wiring up the frontend. It has a `base_url` collection variable — point it at `http://<EC2-public-DNS>:30080` once deployed (nginx proxies `/api` through to the backend). The collection covers the health check plus full CRUD: create, list, get-by-id, update, delete.
 
 ---
 
@@ -186,19 +156,19 @@ Import `postman/student-survey.postman_collection.json`. It defines a `base_url`
 | PUT    | `/api/surveys/{id}`     | Update a survey                  |
 | DELETE | `/api/surveys/{id}`     | Delete a survey                  |
 
-Full interactive documentation (request/response schemas) is auto-generated by FastAPI at `/docs`.
+FastAPI generates the full interactive docs (request/response schemas and all) at `/docs` automatically, so I didn't have to write that part up separately.
 
 ---
 
-## Video Recording Checklist
+## What's in My Walkthrough Video
 
-The assignment requires a voice-over video demonstrating every part of the app. Suggested walkthrough order:
+The assignment wants a voice-over video showing every part of the app working. I recorded mine in this order, which I'd recommend if you're doing the same:
 
-1. `kubectl get pods` — show all three Pods (frontend, backend, mysql) Running.
-2. Browser: submit a new survey through the "New Survey" tab, showing client-side validation on empty/invalid fields, then a successful submission.
-3. Switch to "View Surveys" — show the new row.
-4. Edit that survey, change a field, save, and show the updated row.
-5. Delete the survey and show it disappear from the list.
-6. Open `/docs` (Swagger UI) and execute a request directly against the API.
-7. Open Postman, run through the collection (create/list/update/delete) against the deployed NodePort URL.
-8. Briefly show the Helm chart directory and mention `helm install`/`helm upgrade` as the deployment mechanism.
+1. `kubectl get pods` — all three Pods (frontend, backend, mysql) Running.
+2. In the browser: submit a new survey through the "New Survey" tab, show the validation kicking in on empty/invalid fields, then a clean submission.
+3. Switch to "View Surveys" and show the new row.
+4. Edit that survey, change something, save, show the row updated.
+5. Delete it and show it disappear from the list.
+6. Open `/docs` (Swagger UI) and run a request directly against the API.
+7. Open Postman and run through create/list/update/delete against the deployed NodePort URL.
+8. Pull up the Helm chart directory for a few seconds and mention `helm install`/`helm upgrade` as how it actually got deployed.
