@@ -275,7 +275,7 @@ swe645-h3/
 		<ul>
 			<li>My HW2 EC2 instance, with Rancher and the Kubernetes cluster still running on it &mdash; I'm not rebuilding any of that</li>
 			<li>A Docker Hub account (<code>lmohler</code>) and a GitHub account, both already set up from HW2</li>
-			<li><code>swe645-h3</code> already pushed to GitHub &mdash; nothing left to do on my laptop</li>
+			<li><code>swe645-h3</code> already pushed to GitHub.</li>
 		</ul>
 		<div class="tip"><strong>Why I'm doing it this way:</strong> Everything in this guide happens in a browser-based EC2 Instance Connect terminal on the EC2 box, not on my Windows machine. I don't have Docker Desktop fighting for resources with anything else, and I don't have to deal with copying a kubeconfig file to a second machine &mdash; the box already knows how to talk to its own cluster.</div>
 
@@ -326,8 +326,8 @@ chmod 700 get_helm.sh
 		<h2>Step 6: Clone the Repo</h2>
 		<p>Since this repo is public and I'm not setting up any CI/CD triggers this time (that was the HW2 Jenkins pipeline, not part of this assignment), I just clone over HTTPS &mdash; no need to set up any Git credentials on this box for GitHub.</p>
 		<pre>mkdir -p ~/repos && cd ~/repos
-git clone https://github.com/lmohler/&lt;repo-name&gt;.git
-cd &lt;repo-name&gt;</pre>
+git clone https://github.com/lmohler/swe645-h3.git
+cd swe645-h3</pre>
 
 		<!-- =========================================================
      PHASE 4
@@ -394,7 +394,7 @@ docker push lmohler/survey-frontend:1.0.0</pre>
 		<div class="note"><strong>No StorageClass setup needed:</strong> since this is RKE2 (see the storage note back in the Overview), I'd normally need to install a provisioner myself before MySQL's PVC could bind to anything. The chart already handles this &mdash; <code>templates/mysql-pv.yaml</code> provisions a static <code>hostPath</code> PV, so there's nothing extra to set up here.</div>
 
 		<h2>Step 13: Install the Chart</h2>
-		<pre>cd ~/repos/&lt;repo-name&gt;/helm
+		<pre>cd ~/repos/swe645-h3/helm
 helm install student-survey ./student-survey \
   --set backend.image.tag=1.0.0 \
   --set frontend.image.tag=1.0.0 \
