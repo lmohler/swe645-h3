@@ -417,7 +417,7 @@ kubectl get svc</pre>
 		<p>All three Pods <strong>Running</strong>, and <code>survey-frontend</code> should be a <strong>NodePort</strong> Service on 30080.</p>
 
 		<h2>Step 16: Open It in a Browser</h2>
-		<pre>http://ec2-xx-xx-xx-xx.compute-1.amazonaws.com:30080</pre>
+		<pre>http://ec2-100-52-109-4.compute-1.amazonaws.com:30080</pre>
 		<p>Swagger docs come through the same nginx proxy at <code>/docs</code>.</p>
 		<div class="note"><strong>If it won't load:</strong> <code>kubectl get pods</code> for CrashLoopBackOff, then <code>kubectl logs &lt;pod-name&gt;</code>. There's a troubleshooting table at the end of this doc with the issues I've actually hit.</div>
 
@@ -434,7 +434,7 @@ kubectl get svc</pre>
 		<p>In Postman: <strong>Import</strong> &gt; <code>postman/student-survey.postman_collection.json</code> (I pulled this from my repo clone, or just from GitHub directly).</p>
 
 		<h2>Step 19: Set base_url</h2>
-		<pre>http://ec2-xx-xx-xx-xx.compute-1.amazonaws.com:30080</pre>
+		<pre>http://ec2-100-52-109-4.compute-1.amazonaws.com:30080</pre>
 		<p>nginx proxies <code>/api</code> through to the backend, so this one variable covers every request in the collection.</p>
 
 		<h2>Step 20: Run Through Every Request</h2>
