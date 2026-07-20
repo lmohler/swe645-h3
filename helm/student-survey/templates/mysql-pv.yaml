@@ -1,0 +1,19 @@
+# Author: Lucas Mohler
+# Static PersistentVolume backing the MySQL PVC. This cluster (RKE2) ships
+# with no default StorageClass/dynamic provisioner, so a single-node hostPath
+# volume is provisioned directly instead of relying on one.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: survey-mysql-pv
+  labels:
+    {{- include "student-survey.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.mysql.persistence.size }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: {{ .Values.mysql.persistence.hostPath }}
+    type: DirectoryOrCreate

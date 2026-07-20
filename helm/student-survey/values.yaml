@@ -28,3 +28,4 @@ mysql:
   password: changeme-user-password
   persistence:
     size: 1Gi
+    hostPath: /var/lib/survey-mysql-data
