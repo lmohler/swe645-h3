@@ -1,12 +1,34 @@
 {
   "info": {
     "name": "Student Survey API (Lucas Mohler)",
-    "description": "CRUD requests for the FastAPI/SQLModel Student Survey backend. Set the base_url collection variable to http://localhost:8000 for local dev or http://<node-ip>:30080 for the deployed NodePort (proxied through nginx).",
+    "description": "CRUD + validation tests for the FastAPI/SQLModel Student Survey backend. Set base_url to http://localhost:8000 for local dev or http://<node-ip>:30080 for the deployed NodePort (proxied through nginx). Run the whole collection top-to-bottom (Collection Runner or Newman): it creates 5 surveys, verifies they coexist, reads/updates/deletes each one, verifies they're gone, then exercises validation errors (missing required fields, invalid enum/email values, and 404s on unknown ids).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "base_url", "value": "http://localhost:8000" },
-    { "key": "survey_id", "value": "1" }
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "survey_id_1",
+      "value": ""
+    },
+    {
+      "key": "survey_id_2",
+      "value": ""
+    },
+    {
+      "key": "survey_id_3",
+      "value": ""
+    },
+    {
+      "key": "survey_id_4",
+      "value": ""
+    },
+    {
+      "key": "survey_id_5",
+      "value": ""
+    }
   ],
   "item": [
     {
@@ -14,52 +36,1310 @@
       "request": {
         "method": "GET",
         "url": "{{base_url}}/health"
-      }
-    },
-    {
-      "name": "Create Survey",
-      "request": {
-        "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "url": "{{base_url}}/api/surveys",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Doe\",\n  \"street_address\": \"123 Main St\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0100\",\n  \"email\": \"jane.doe@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\"campus\", \"sports\"],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"very_likely\"\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"Status body is ok\", function () {",
+              "    pm.expect(pm.response.json().status).to.eql(\"ok\");",
+              "});"
+            ]
+          }
         }
-      }
+      ]
     },
     {
-      "name": "List Surveys",
-      "request": {
-        "method": "GET",
-        "url": "{{base_url}}/api/surveys"
-      }
-    },
-    {
-      "name": "Get Survey by ID",
-      "request": {
-        "method": "GET",
-        "url": "{{base_url}}/api/surveys/{{survey_id}}"
-      }
-    },
-    {
-      "name": "Update Survey",
-      "request": {
-        "method": "PUT",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "url": "{{base_url}}/api/surveys/{{survey_id}}",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Smith\",\n  \"street_address\": \"123 Main St\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0100\",\n  \"email\": \"jane.smith@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\"dorm_rooms\"],\n  \"referral_source\": \"friends\",\n  \"recommend_likelihood\": \"likely\"\n}"
+      "name": "1. Create 5 Surveys",
+      "item": [
+        {
+          "name": "Create Survey 1 - Jane Doe",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Doe\",\n  \"street_address\": \"123 Main St\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0100\",\n  \"email\": \"jane.doe@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\",\n    \"sports\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"very_likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Response includes a numeric id\", function () {",
+                  "    pm.expect(jsonData.id).to.be.a(\"number\");",
+                  "});",
+                  "pm.test(\"Response echoes submitted first_name\", function () {",
+                  "    pm.expect(jsonData.first_name).to.eql(\"Jane\");",
+                  "});",
+                  "pm.collectionVariables.set(\"survey_id_1\", jsonData.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey 2 - John Kim",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Kim\",\n  \"street_address\": \"45 Wilson Blvd\",\n  \"city\": \"Arlington\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22201\",\n  \"phone\": \"703-555-0111\",\n  \"email\": \"john.kim@example.com\",\n  \"survey_date\": \"2026-07-15\",\n  \"liked_most\": [\n    \"location\",\n    \"dorm_rooms\"\n  ],\n  \"referral_source\": \"friends\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Response includes a numeric id\", function () {",
+                  "    pm.expect(jsonData.id).to.be.a(\"number\");",
+                  "});",
+                  "pm.test(\"Response echoes submitted first_name\", function () {",
+                  "    pm.expect(jsonData.first_name).to.eql(\"John\");",
+                  "});",
+                  "pm.collectionVariables.set(\"survey_id_2\", jsonData.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey 3 - Maria Garcia",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Maria\",\n  \"last_name\": \"Garcia\",\n  \"street_address\": \"78 King St\",\n  \"city\": \"Alexandria\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22314\",\n  \"phone\": \"703-555-0122\",\n  \"email\": \"maria.garcia@example.com\",\n  \"survey_date\": \"2026-07-16\",\n  \"liked_most\": [\n    \"students\",\n    \"atmosphere\"\n  ],\n  \"referral_source\": \"television\",\n  \"recommend_likelihood\": \"very_likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Response includes a numeric id\", function () {",
+                  "    pm.expect(jsonData.id).to.be.a(\"number\");",
+                  "});",
+                  "pm.test(\"Response echoes submitted first_name\", function () {",
+                  "    pm.expect(jsonData.first_name).to.eql(\"Maria\");",
+                  "});",
+                  "pm.collectionVariables.set(\"survey_id_3\", jsonData.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey 4 - Wei Chen",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Wei\",\n  \"last_name\": \"Chen\",\n  \"street_address\": \"12 Sunset Hills Rd\",\n  \"city\": \"Reston\",\n  \"state\": \"VA\",\n  \"zip_code\": \"20190\",\n  \"phone\": \"703-555-0133\",\n  \"email\": \"wei.chen@example.com\",\n  \"survey_date\": \"2026-07-17\",\n  \"liked_most\": [\n    \"sports\"\n  ],\n  \"referral_source\": \"other\",\n  \"recommend_likelihood\": \"unlikely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Response includes a numeric id\", function () {",
+                  "    pm.expect(jsonData.id).to.be.a(\"number\");",
+                  "});",
+                  "pm.test(\"Response echoes submitted first_name\", function () {",
+                  "    pm.expect(jsonData.first_name).to.eql(\"Wei\");",
+                  "});",
+                  "pm.collectionVariables.set(\"survey_id_4\", jsonData.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey 5 - Aisha Khan",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Aisha\",\n  \"last_name\": \"Khan\",\n  \"street_address\": \"300 Maple Ave\",\n  \"city\": \"Vienna\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22180\",\n  \"phone\": \"703-555-0144\",\n  \"email\": \"aisha.khan@example.com\",\n  \"survey_date\": \"2026-07-18\",\n  \"liked_most\": [\n    \"campus\",\n    \"location\",\n    \"dorm_rooms\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Response includes a numeric id\", function () {",
+                  "    pm.expect(jsonData.id).to.be.a(\"number\");",
+                  "});",
+                  "pm.test(\"Response echoes submitted first_name\", function () {",
+                  "    pm.expect(jsonData.first_name).to.eql(\"Aisha\");",
+                  "});",
+                  "pm.collectionVariables.set(\"survey_id_5\", jsonData.id);"
+                ]
+              }
+            }
+          ]
         }
-      }
+      ]
     },
     {
-      "name": "Delete Survey",
-      "request": {
-        "method": "DELETE",
-        "url": "{{base_url}}/api/surveys/{{survey_id}}"
-      }
+      "name": "2. List Surveys (Verify All 5 Exist)",
+      "item": [
+        {
+          "name": "List Surveys - Verify All 5 Exist",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/surveys"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Response is an array\", function () {",
+                  "    pm.expect(jsonData).to.be.an(\"array\");",
+                  "});",
+                  "var ids = jsonData.map(function (s) { return s.id; });",
+                  "[\"1\",\"2\",\"3\",\"4\",\"5\"].forEach(function (key) {",
+                  "    var expectedId = parseInt(pm.collectionVariables.get(\"survey_id_\" + key), 10);",
+                  "    pm.test(\"List includes survey \" + key + \" (id \" + expectedId + \")\", function () {",
+                  "        pm.expect(ids).to.include(expectedId);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Get Each Survey",
+      "item": [
+        {
+          "name": "Get Survey 1 - Jane Doe",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/surveys/{{survey_id_1}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Returned survey has expected last_name\", function () {",
+                  "    pm.expect(jsonData.last_name).to.eql(\"Doe\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Survey 2 - John Kim",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/surveys/{{survey_id_2}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Returned survey has expected last_name\", function () {",
+                  "    pm.expect(jsonData.last_name).to.eql(\"Kim\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Survey 3 - Maria Garcia",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/surveys/{{survey_id_3}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Returned survey has expected last_name\", function () {",
+                  "    pm.expect(jsonData.last_name).to.eql(\"Garcia\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Survey 4 - Wei Chen",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/surveys/{{survey_id_4}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Returned survey has expected last_name\", function () {",
+                  "    pm.expect(jsonData.last_name).to.eql(\"Chen\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Survey 5 - Aisha Khan",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/surveys/{{survey_id_5}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Returned survey has expected last_name\", function () {",
+                  "    pm.expect(jsonData.last_name).to.eql(\"Khan\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Update Each Survey",
+      "item": [
+        {
+          "name": "Update Survey 1 - Jane Doe",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/surveys/{{survey_id_1}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Smith\",\n  \"street_address\": \"123 Main St\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0100\",\n  \"email\": \"jane.smith@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\",\n    \"sports\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"last_name was updated\", function () {",
+                  "    pm.expect(jsonData.last_name).to.eql(\"Smith\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Survey 2 - John Kim",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/surveys/{{survey_id_2}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Kim\",\n  \"street_address\": \"45 Wilson Blvd\",\n  \"city\": \"Alexandria\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22201\",\n  \"phone\": \"703-555-0111\",\n  \"email\": \"john.kim@example.com\",\n  \"survey_date\": \"2026-07-15\",\n  \"liked_most\": [\n    \"location\",\n    \"dorm_rooms\"\n  ],\n  \"referral_source\": \"friends\",\n  \"recommend_likelihood\": \"very_likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"city was updated\", function () {",
+                  "    pm.expect(jsonData.city).to.eql(\"Alexandria\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Survey 3 - Maria Garcia",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/surveys/{{survey_id_3}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Maria\",\n  \"last_name\": \"Garcia\",\n  \"street_address\": \"78 King St\",\n  \"city\": \"Alexandria\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22314\",\n  \"phone\": \"703-555-9999\",\n  \"email\": \"maria.garcia@example.com\",\n  \"survey_date\": \"2026-07-16\",\n  \"liked_most\": [\n    \"students\",\n    \"atmosphere\"\n  ],\n  \"referral_source\": \"other\",\n  \"recommend_likelihood\": \"very_likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"phone was updated\", function () {",
+                  "    pm.expect(jsonData.phone).to.eql(\"703-555-9999\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Survey 4 - Wei Chen",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/surveys/{{survey_id_4}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Wei\",\n  \"last_name\": \"Chen\",\n  \"street_address\": \"12 Sunset Hills Rd\",\n  \"city\": \"Reston\",\n  \"state\": \"VA\",\n  \"zip_code\": \"20190\",\n  \"phone\": \"703-555-0133\",\n  \"email\": \"wei.chen@example.com\",\n  \"survey_date\": \"2026-07-17\",\n  \"liked_most\": [\n    \"sports\",\n    \"campus\"\n  ],\n  \"referral_source\": \"other\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"recommend_likelihood was updated\", function () {",
+                  "    pm.expect(jsonData.recommend_likelihood).to.eql(\"likely\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Survey 5 - Aisha Khan",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/surveys/{{survey_id_5}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Aisha\",\n  \"last_name\": \"Rahman\",\n  \"street_address\": \"300 Maple Ave\",\n  \"city\": \"Vienna\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22180\",\n  \"phone\": \"703-555-0144\",\n  \"email\": \"aisha.khan@example.com\",\n  \"survey_date\": \"2026-07-18\",\n  \"liked_most\": [\n    \"campus\",\n    \"location\",\n    \"dorm_rooms\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"last_name was updated\", function () {",
+                  "    pm.expect(jsonData.last_name).to.eql(\"Rahman\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Delete Each Survey",
+      "item": [
+        {
+          "name": "Delete Survey 1 - Jane Doe",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/surveys/{{survey_id_1}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Survey 2 - John Kim",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/surveys/{{survey_id_2}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Survey 3 - Maria Garcia",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/surveys/{{survey_id_3}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Survey 4 - Wei Chen",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/surveys/{{survey_id_4}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Survey 5 - Aisha Khan",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/surveys/{{survey_id_5}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. List Surveys (Verify All 5 Removed)",
+      "item": [
+        {
+          "name": "List Surveys - Verify All 5 Removed",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/surveys"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "var ids = jsonData.map(function (s) { return s.id; });",
+                  "[\"1\",\"2\",\"3\",\"4\",\"5\"].forEach(function (key) {",
+                  "    var deletedId = parseInt(pm.collectionVariables.get(\"survey_id_\" + key), 10);",
+                  "    pm.test(\"List no longer includes survey \" + key + \" (id \" + deletedId + \")\", function () {",
+                  "        pm.expect(ids).to.not.include(deletedId);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Validation - Missing Required Fields",
+      "item": [
+        {
+          "name": "Create Survey - Missing first_name",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'first_name' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"first_name\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Missing last_name",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'last_name' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"last_name\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Missing street_address",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'street_address' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"street_address\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Missing city",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'city' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"city\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Missing state",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'state' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"state\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Missing zip_code",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'zip_code' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"zip_code\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Missing phone",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'phone' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"phone\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Missing email",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'email' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"email\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Missing survey_date",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'survey_date' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"survey_date\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Missing referral_source",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'referral_source' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"referral_source\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Missing recommend_likelihood",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'recommend_likelihood' as the missing field\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"recommend_likelihood\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Completely Empty Body",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Multiple required fields reported missing\", function () {",
+                  "    pm.expect(jsonData.detail.length).to.be.above(5);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Validation - Invalid Values",
+      "item": [
+        {
+          "name": "Create Survey - Invalid Email Format",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"not-an-email\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'email' as invalid\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"email\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Invalid referral_source Value",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"bogus_value\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'referral_source' as invalid\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"referral_source\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Survey - Invalid recommend_likelihood Value",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/surveys",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"bogus_value\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 422 (validation error)\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "var jsonData = pm.response.json();",
+                  "pm.test(\"Error identifies 'recommend_likelihood' as invalid\", function () {",
+                  "    var locs = jsonData.detail.map(function (e) { return e.loc.join(\".\"); });",
+                  "    pm.expect(locs.some(function (l) { return l.includes(\"recommend_likelihood\"); })).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Validation - Not Found (404)",
+      "item": [
+        {
+          "name": "Get Survey - Nonexistent ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/surveys/999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Error detail is 'Survey not found'\", function () {",
+                  "    pm.expect(pm.response.json().detail).to.eql(\"Survey not found\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Survey - Nonexistent ID",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/surveys/999999",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"street_address\": \"1 Test Ln\",\n  \"city\": \"Fairfax\",\n  \"state\": \"VA\",\n  \"zip_code\": \"22030\",\n  \"phone\": \"703-555-0199\",\n  \"email\": \"test.user@example.com\",\n  \"survey_date\": \"2026-07-14\",\n  \"liked_most\": [\n    \"campus\"\n  ],\n  \"referral_source\": \"internet\",\n  \"recommend_likelihood\": \"likely\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Error detail is 'Survey not found'\", function () {",
+                  "    pm.expect(pm.response.json().detail).to.eql(\"Survey not found\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Survey - Nonexistent ID",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/surveys/999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Error detail is 'Survey not found'\", function () {",
+                  "    pm.expect(pm.response.json().detail).to.eql(\"Survey not found\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -170,6 +170,11 @@ Browser
 [mysql Pod: MySQL 8.4 + PersistentVolumeClaim]</pre>
 		<p>The browser only ever talks to the frontend's NodePort. nginx reverse-proxies the API calls back to the backend Service inside the cluster, which means I never had to think about CORS in production, and the backend doesn't need a port of its own exposed to the outside world.</p>
 
+		<h3>MySQL Storage: Static PV, Not Dynamic Provisioning</h3>
+		<p>My HW2 EC2 box runs Rancher in its full RKE2 mode, not the lighter K3s distribution &mdash; <code>kubectl get pods -n kube-system</code> shows static pods like <code>etcd</code>, <code>kube-apiserver</code>, and <code>rke2-coredns</code>/<code>rke2-traefik</code> rather than K3s's single-binary footprint. That distinction matters for storage: K3s ships with a <code>local-path</code> StorageClass out of the box, but RKE2 deliberately doesn't assume any storage backend, so <code>kubectl get storageclass</code> on this cluster comes back empty.</p>
+		<p>Since MySQL needs a <code>PersistentVolumeClaim</code> and there's no default StorageClass (and no cloud CSI driver, since this is a plain EC2 box) to satisfy it dynamically, the chart provisions the volume itself: <code>helm/student-survey/templates/mysql-pv.yaml</code> defines a static, single-node <code>hostPath</code> <code>PersistentVolume</code> with no <code>storageClassName</code>, which matches the PVC's own unset <code>storageClassName</code> and binds immediately &mdash; no provisioner required. The host path is configurable via <code>mysql.persistence.hostPath</code> in <code>values.yaml</code> (defaults to <code>/var/lib/survey-mysql-data</code>).</p>
+		<div class="note"><strong>Why hostPath instead of a provisioner:</strong> this is a single-node cluster with nothing else to schedule onto, so tying a volume to that one node has no real downside here. On a multi-node cluster I'd install a real provisioner (e.g. <code>local-path-provisioner</code>, since RKE2 doesn't bundle one) instead.</div>
+
 		<h3>What's in the Repo</h3>
 		<pre>
 Repo-v2/
@@ -423,6 +428,7 @@ docker push lmohler/survey-frontend:1.0.0</pre>
 
 		<h2>Step 14: Don't Leave the Default MySQL Password In</h2>
 		<p><code>helm/student-survey/values.yaml</code> ships with placeholder credentials (<code>changeme-root-password</code>, etc.). I'm overriding these at install time rather than editing the file, especially since this repo is public on GitHub.</p>
+		<div class="note"><strong>No StorageClass setup needed:</strong> since this is RKE2 (see the storage note back in the Overview), I'd normally need to install a provisioner myself before MySQL's PVC could bind to anything. The chart already handles this &mdash; <code>templates/mysql-pv.yaml</code> provisions a static <code>hostPath</code> PV, so there's nothing extra to set up here.</div>
 
 		<h2>Step 15: Install the Chart</h2>
 		<pre>cd ~/repos/&lt;repo-name&gt;/helm
@@ -435,7 +441,7 @@ helm install student-survey ./student-survey \
 
 		<h2>Step 16: Watch It Come Up</h2>
 		<pre>kubectl get pods --watch</pre>
-		<p><code>survey-mysql</code> comes up first, then <code>survey-backend</code> once it can reach MySQL (it retries the DB connection on startup &mdash; see <code>_create_db_and_tables_with_retry</code> in <code>backend/app/main.py</code>), then <code>survey-frontend</code>. <code>Ctrl+C</code> once all three say <code>1/1 Running</code>.</p>
+		<p>The PVC binds to the static PV in <code>mysql-pv.yaml</code> immediately (no provisioner to wait on), so <code>survey-mysql</code> should schedule and come up right away, then <code>survey-backend</code> once it can reach MySQL (it retries the DB connection on startup &mdash; see <code>_create_db_and_tables_with_retry</code> in <code>backend/app/main.py</code>), then <code>survey-frontend</code>. <code>Ctrl+C</code> once all three say <code>1/1 Running</code>.</p>
 
 		<!-- =========================================================
      PHASE 8
@@ -684,7 +690,7 @@ kubectl get svc</pre>
 			</tr>
 			<tr>
 				<td><code>helm/student-survey/templates/*.yaml</code></td>
-				<td>Deployments, Services, Secret, PVC for frontend/backend/mysql</td>
+				<td>Deployments, Services, Secret, PVC + static hostPath PV for frontend/backend/mysql</td>
 			</tr>
 			<tr>
 				<td><code>postman/student-survey.postman_collection.json</code></td>
@@ -727,7 +733,7 @@ kubectl get svc</pre>
 			</tr>
 			<tr>
 				<td>MySQL Pod won't start / PVC pending</td>
-				<td><code>kubectl describe pvc survey-mysql-pvc</code> &mdash; confirm the cluster has a default StorageClass</td>
+				<td>The chart's own static PV (<code>mysql-pv.yaml</code>) should make this a non-issue, but if it still happens: <code>kubectl get pv,pvc</code> to confirm <code>survey-mysql-pv</code> exists and is <code>Bound</code>, and <code>kubectl get storageclass</code> to double check nothing's now shadowing it with a real default StorageClass</td>
 			</tr>
 			<tr>
 				<td>Postman requests fail with connection refused</td>
