@@ -154,7 +154,7 @@
 		<h1>Overview</h1>
 		<p>For HW2 I already had an EC2 instance running Rancher with a single-node Kubernetes cluster on it. Rather than spin up a second box for HW3, I decided to reuse that same instance &mdash; it's already got Docker, Rancher, and kubectl configured, so the only new tool I actually need is Helm.</p>
 		<p>The bigger change from how I did HW2 is where the work happens. Last time I built and pushed images from my own laptop. This time I'm doing the whole thing from inside the EC2 box: clone the repo there, build the images there, push them from there, and run <code>helm install</code> right on the machine that's already talking to the cluster. It cuts out a step (no copying a kubeconfig file around) and it's closer to how this would actually work outside of a class assignment.</p>
-		<p>My source lives in <code>Repo-v2</code> on GitHub &mdash; it's the same app as my working copy, just without the virtualenv, <code>node_modules</code>, and local SQLite file that don't belong in source control. This guide is basically my own notes on getting from "empty EC2 box with Rancher on it" to "app running behind a NodePort," written up so I (and whoever's grading this) can follow it again later.</p>
+		<p>My source lives in <code>swe645-h3</code> on GitHub &mdash; it's the same app as my working copy, just without the virtualenv, <code>node_modules</code>, and local SQLite file that don't belong in source control. This guide is basically my own notes on getting from "empty EC2 box with Rancher on it" to "app running behind a NodePort," written up so I (and whoever's grading this) can follow it again later.</p>
 
 		<h3>Architecture</h3>
 		<pre>
@@ -177,7 +177,7 @@ Browser
 
 		<h3>What's in the Repo</h3>
 		<pre>
-Repo-v2/
+swe645-h3/
 ├── backend/                # FastAPI + SQLModel REST API
 │   ├── app/
 │   │   ├── main.py         # app setup, CORS, DB-ready retry, /health
@@ -231,7 +231,7 @@ Repo-v2/
 			</tr>
 			<tr>
 				<td>1</td>
-				<td>SSH back into my HW2 EC2 box, confirm Docker/Rancher/kubectl still work</td>
+				<td>Connect to my HW2 EC2 box via EC2 Instance Connect, confirm Docker/Rancher/kubectl still work</td>
 				<td>Same cluster from HW2, still Ready</td>
 			</tr>
 			<tr>
@@ -241,74 +241,56 @@ Repo-v2/
 			</tr>
 			<tr>
 				<td>3</td>
-				<td>Push <code>Repo-v2</code> to a new GitHub repo from my laptop</td>
-				<td>Source on GitHub</td>
-			</tr>
-			<tr>
-				<td>4</td>
-				<td>Clone it onto the EC2 box</td>
+				<td>Clone the repo onto the EC2 box</td>
 				<td>Source on the server</td>
 			</tr>
 			<tr>
-				<td>5</td>
+				<td>4</td>
 				<td>Build both Docker images on EC2 and push to Docker Hub</td>
 				<td>Two images pullable by the cluster</td>
 			</tr>
 			<tr>
-				<td>6</td>
+				<td>5</td>
 				<td>Open the new NodePort in the EC2 security group</td>
 				<td>Port 30080 reachable from my browser</td>
 			</tr>
 			<tr>
-				<td>7</td>
+				<td>6</td>
 				<td>Deploy with Helm</td>
 				<td>Frontend, backend, MySQL Pods Running</td>
 			</tr>
 			<tr>
-				<td>8</td>
+				<td>7</td>
 				<td>Check that everything actually came up</td>
 				<td>App reachable at the NodePort URL</td>
 			</tr>
 			<tr>
-				<td>9</td>
+				<td>8</td>
 				<td>Run the Postman collection against the deployed backend</td>
 				<td>Full CRUD verified</td>
-			</tr>
-			<tr>
-				<td>10</td>
-				<td>Record my walkthrough video</td>
-				<td>Every requirement demonstrated on camera</td>
-			</tr>
-			<tr>
-				<td>11</td>
-				<td>(Optional) Point at Amazon RDS instead of the in-cluster MySQL</td>
-				<td>MySQL running outside the cluster</td>
-			</tr>
-			<tr>
-				<td>12</td>
-				<td>Zip it up and submit</td>
-				<td>Canvas submission ready</td>
 			</tr>
 		</table>
 
 		<h3>Before I Start</h3>
 		<ul>
 			<li>My HW2 EC2 instance, with Rancher and the Kubernetes cluster still running on it &mdash; I'm not rebuilding any of that</li>
-			<li>The <code>.pem</code> key file for that instance, so I can SSH back in</li>
 			<li>A Docker Hub account (<code>lmohler</code>) and a GitHub account, both already set up from HW2</li>
-			<li><code>Repo-v2</code> on my laptop, ready to push &mdash; already stripped of <code>node_modules</code>, <code>.venv</code>, and the local SQLite file</li>
+			<li><code>swe645-h3</code> already pushed to GitHub &mdash; nothing left to do on my laptop</li>
 		</ul>
-		<div class="tip"><strong>Why I'm doing it this way:</strong> Everything past Phase 3 happens over SSH on the EC2 box, not on my Windows machine. I don't have Docker Desktop fighting for resources with anything else, and I don't have to deal with copying a kubeconfig file to a second machine &mdash; the box already knows how to talk to its own cluster.</div>
+		<div class="tip"><strong>Why I'm doing it this way:</strong> Everything in this guide happens in a browser-based EC2 Instance Connect terminal on the EC2 box, not on my Windows machine. I don't have Docker Desktop fighting for resources with anything else, and I don't have to deal with copying a kubeconfig file to a second machine &mdash; the box already knows how to talk to its own cluster.</div>
 
 		<!-- =========================================================
      PHASE 1
      ========================================================= -->
 		<h1>Phase 1 &ndash; Reconnecting to My HW2 Box</h1>
 
-		<h2>Step 1: SSH In</h2>
-		<pre>chmod 400 my-key-file.pem
-ssh -i my-key-file.pem ubuntu@ec2-xx-xx-xx-xx.compute-1.amazonaws.com</pre>
-		<div class="note"><strong>If the public DNS changed:</strong> unless I attached an Elastic IP back in HW2, an AWS Academy lab restart gives the instance a new public DNS every time. I check the current one under EC2 &gt; Instances in the console before trying to connect.</div>
+		<h2>Step 1: Connect to My Instance</h2>
+		<p>No key file or local terminal client needed &mdash; the browser-based EC2 Instance Connect handles it straight from the console:</p>
+		<ol>
+			<li>AWS Console &gt; EC2 &gt; Instances &gt; select my instance.</li>
+			<li>Click <strong>Connect</strong> &gt; <strong>EC2 Instance Connect</strong> tab &gt; <strong>Connect</strong>.</li>
+		</ol>
+		<p>This opens a terminal tab directly in the browser, already logged in as <code>ubuntu</code>.</p>
 
 		<h2>Step 2: Confirm Docker and Rancher Are Still Running</h2>
 		<pre>docker ps</pre>
@@ -335,59 +317,40 @@ chmod 700 get_helm.sh
 		<!-- =========================================================
      PHASE 3
      ========================================================= -->
-		<h1>Phase 3 &ndash; Pushing Repo-v2 to GitHub</h1>
-		<p>This part happens on my laptop, not on EC2 &mdash; I need the code on GitHub before I can clone it onto the server.</p>
+		<h1>Phase 3 &ndash; Cloning It Onto EC2</h1>
 
-		<h2>Step 5: Create an Empty Repo on GitHub</h2>
-		<p>github.com/new, no README/gitignore/license added (I already have those in <code>Repo-v2</code> and don't want a merge conflict on the very first push).</p>
-
-		<h2>Step 6: Init, Commit, and Push</h2>
-		<pre>cd Repo-v2
-git init
-git add .
-git commit -m "Initial commit: HW3 student survey app"
-git branch -M main
-git remote add origin https://github.com/lmohler/&lt;repo-name&gt;.git
-git push -u origin main</pre>
-		<div class="tip"><strong>Tip:</strong> I double-checked <code>git status</code> after the <code>add .</code> to make sure nothing like a stray <code>.env</code> file or credentials snuck in before committing.</div>
-
-		<!-- =========================================================
-     PHASE 4
-     ========================================================= -->
-		<h1>Phase 4 &ndash; Cloning It Onto EC2</h1>
-
-		<h2>Step 7: Make Sure Git Is There</h2>
+		<h2>Step 5: Make Sure Git Is There</h2>
 		<pre>git --version</pre>
 		<p>It already was, from HW2, but worth checking. If not: <code>sudo apt install git -y</code>.</p>
 
-		<h2>Step 8: Clone the Repo</h2>
-		<p>Since this repo is public and I'm not setting up any CI/CD triggers this time (that was the HW2 Jenkins pipeline, not part of this assignment), I just clone over HTTPS &mdash; no need to generate a new SSH key on this box for GitHub.</p>
+		<h2>Step 6: Clone the Repo</h2>
+		<p>Since this repo is public and I'm not setting up any CI/CD triggers this time (that was the HW2 Jenkins pipeline, not part of this assignment), I just clone over HTTPS &mdash; no need to set up any Git credentials on this box for GitHub.</p>
 		<pre>mkdir -p ~/repos && cd ~/repos
 git clone https://github.com/lmohler/&lt;repo-name&gt;.git
 cd &lt;repo-name&gt;</pre>
 
 		<!-- =========================================================
-     PHASE 5
+     PHASE 4
      ========================================================= -->
-		<h1>Phase 5 &ndash; Building and Pushing the Docker Images (from EC2)</h1>
+		<h1>Phase 4 &ndash; Building and Pushing the Docker Images (from EC2)</h1>
 		<p>This is the part that's different from how I did it the first time around &mdash; instead of <code>docker build</code> on my laptop, I'm doing it right here on the server, since Docker's already installed and this is where the image needs to end up being pulled from anyway (well, from Docker Hub, but building here saves me a round trip).</p>
 
-		<h2>Step 9: Build the Backend Image</h2>
+		<h2>Step 7: Build the Backend Image</h2>
 		<pre>cd backend
 docker build -t lmohler/survey-backend:1.0.0 .</pre>
 
-		<h2>Step 10: Smoke-Test It</h2>
+		<h2>Step 8: Smoke-Test It</h2>
 		<pre>docker run --rm -d -p 8000:8000 -e DATABASE_URL=sqlite:////tmp/local.db --name backend-test lmohler/survey-backend:1.0.0
 curl localhost:8000/health</pre>
 		<p>I expect <code>{"status": "ok"}</code> back. Once confirmed:</p>
 		<pre>docker stop backend-test</pre>
 
-		<h2>Step 11: Build the Frontend Image</h2>
+		<h2>Step 9: Build the Frontend Image</h2>
 		<pre>cd ../frontend
 docker build -t lmohler/survey-frontend:1.0.0 .</pre>
 		<div class="note"><strong>Note:</strong> I didn't bother smoke-testing the frontend image standalone this time the way I did during local dev &mdash; without a backend Service to proxy to, it would just 502 on <code>/api</code> calls anyway, and I already know from earlier testing that the build itself works.</div>
 
-		<h2>Step 12: Log In to Docker Hub and Push Both Images</h2>
+		<h2>Step 10: Log In to Docker Hub and Push Both Images</h2>
 		<pre>docker login -u lmohler</pre>
 		<p>(enters my Docker Hub password/token when prompted)</p>
 		<pre>docker push lmohler/survey-backend:1.0.0
@@ -396,11 +359,11 @@ docker push lmohler/survey-frontend:1.0.0</pre>
 		<div class="tip"><strong>Tip:</strong> If I make a code change later, I bump the tag (e.g. <code>1.0.1</code>) instead of overwriting <code>1.0.0</code> &mdash; makes it obvious during <code>helm upgrade</code> which build is actually running.</div>
 
 		<!-- =========================================================
-     PHASE 6
+     PHASE 5
      ========================================================= -->
-		<h1>Phase 6 &ndash; Opening Port 30080</h1>
+		<h1>Phase 5 &ndash; Opening Port 30080</h1>
 
-		<h2>Step 13: Add the Inbound Rule</h2>
+		<h2>Step 11: Add the Inbound Rule</h2>
 		<ol>
 			<li>AWS Console &gt; EC2 &gt; Instances &gt; my instance &gt; Security tab &gt; click the security group.</li>
 			<li>Edit inbound rules &gt; Add rule.</li>
@@ -422,15 +385,15 @@ docker push lmohler/survey-frontend:1.0.0</pre>
 		<div class="note"><strong>Note:</strong> If my HW2 security group already had the whole <code>30000&ndash;32767</code> NodePort range open, 30080 is already covered and I can skip this.</div>
 
 		<!-- =========================================================
-     PHASE 7
+     PHASE 6
      ========================================================= -->
-		<h1>Phase 7 &ndash; Deploying with Helm</h1>
+		<h1>Phase 6 &ndash; Deploying with Helm</h1>
 
-		<h2>Step 14: Don't Leave the Default MySQL Password In</h2>
+		<h2>Step 12: Don't Leave the Default MySQL Password In</h2>
 		<p><code>helm/student-survey/values.yaml</code> ships with placeholder credentials (<code>changeme-root-password</code>, etc.). I'm overriding these at install time rather than editing the file, especially since this repo is public on GitHub.</p>
 		<div class="note"><strong>No StorageClass setup needed:</strong> since this is RKE2 (see the storage note back in the Overview), I'd normally need to install a provisioner myself before MySQL's PVC could bind to anything. The chart already handles this &mdash; <code>templates/mysql-pv.yaml</code> provisions a static <code>hostPath</code> PV, so there's nothing extra to set up here.</div>
 
-		<h2>Step 15: Install the Chart</h2>
+		<h2>Step 13: Install the Chart</h2>
 		<pre>cd ~/repos/&lt;repo-name&gt;/helm
 helm install student-survey ./student-survey \
   --set backend.image.tag=1.0.0 \
@@ -439,42 +402,42 @@ helm install student-survey ./student-survey \
   --set mysql.password=&lt;my-strong-password&gt;</pre>
 		<p>This creates the three Deployments (<code>survey-frontend</code>, <code>survey-backend</code>, <code>survey-mysql</code>), their Services, a Secret, and a PersistentVolumeClaim &mdash; all from the templates under <code>helm/student-survey/templates/</code>.</p>
 
-		<h2>Step 16: Watch It Come Up</h2>
+		<h2>Step 14: Watch It Come Up</h2>
 		<pre>kubectl get pods --watch</pre>
 		<p>The PVC binds to the static PV in <code>mysql-pv.yaml</code> immediately (no provisioner to wait on), so <code>survey-mysql</code> should schedule and come up right away, then <code>survey-backend</code> once it can reach MySQL (it retries the DB connection on startup &mdash; see <code>_create_db_and_tables_with_retry</code> in <code>backend/app/main.py</code>), then <code>survey-frontend</code>. <code>Ctrl+C</code> once all three say <code>1/1 Running</code>.</p>
 
 		<!-- =========================================================
-     PHASE 8
+     PHASE 7
      ========================================================= -->
-		<h1>Phase 8 &ndash; Checking Everything Actually Came Up</h1>
+		<h1>Phase 7 &ndash; Checking Everything Actually Came Up</h1>
 
-		<h2>Step 17: Pods and Services</h2>
+		<h2>Step 15: Pods and Services</h2>
 		<pre>kubectl get pods
 kubectl get svc</pre>
 		<p>All three Pods <strong>Running</strong>, and <code>survey-frontend</code> should be a <strong>NodePort</strong> Service on 30080.</p>
 
-		<h2>Step 18: Open It in a Browser</h2>
+		<h2>Step 16: Open It in a Browser</h2>
 		<pre>http://ec2-xx-xx-xx-xx.compute-1.amazonaws.com:30080</pre>
 		<p>Swagger docs come through the same nginx proxy at <code>/docs</code>.</p>
 		<div class="note"><strong>If it won't load:</strong> <code>kubectl get pods</code> for CrashLoopBackOff, then <code>kubectl logs &lt;pod-name&gt;</code>. There's a troubleshooting table at the end of this doc with the issues I've actually hit.</div>
 
-		<h2>Step 19: Rolling Out a Change Later</h2>
+		<h2>Step 17: Rolling Out a Change Later</h2>
 		<pre>helm upgrade student-survey ./student-survey --set backend.image.tag=1.0.1</pre>
 		<p><code>helm uninstall student-survey</code> tears the whole thing down &mdash; MySQL PVC claim included, though whether the underlying data actually gets wiped depends on the PV's reclaim policy.</p>
 
 		<!-- =========================================================
-     PHASE 9
+     PHASE 8
      ========================================================= -->
-		<h1>Phase 9 &ndash; Running Through Postman</h1>
+		<h1>Phase 8 &ndash; Running Through Postman</h1>
 
-		<h2>Step 20: Import the Collection</h2>
+		<h2>Step 18: Import the Collection</h2>
 		<p>In Postman: <strong>Import</strong> &gt; <code>postman/student-survey.postman_collection.json</code> (I pulled this from my repo clone, or just from GitHub directly).</p>
 
-		<h2>Step 21: Set base_url</h2>
+		<h2>Step 19: Set base_url</h2>
 		<pre>http://ec2-xx-xx-xx-xx.compute-1.amazonaws.com:30080</pre>
 		<p>nginx proxies <code>/api</code> through to the backend, so this one variable covers every request in the collection.</p>
 
-		<h2>Step 22: Run Through Every Request</h2>
+		<h2>Step 20: Run Through Every Request</h2>
 		<ol>
 			<li>Health check &mdash; <code>{"status": "ok"}</code>.</li>
 			<li>Create a survey &mdash; <code>201</code>, full survey object back with a new <code>id</code>.</li>
@@ -483,79 +446,6 @@ kubectl get svc</pre>
 			<li>Update &mdash; change a field, confirm it stuck.</li>
 			<li>Delete &mdash; <code>204</code>, then List again to confirm it's gone.</li>
 		</ol>
-
-		<!-- =========================================================
-     PHASE 10
-     ========================================================= -->
-		<h1>Phase 10 &ndash; Recording My Walkthrough Video</h1>
-		<p>The assignment wants a voice-over video showing every part of the app. Here's the order I'm using:</p>
-		<ol>
-			<li><code>kubectl get pods</code> &mdash; all three Pods Running.</li>
-			<li>Submit a new survey through "New Survey," show validation kicking in on empty/invalid fields first, then a clean submission.</li>
-			<li>Switch to "View Surveys," show the new row.</li>
-			<li>Edit it, change a field, save, show the row updated.</li>
-			<li>Delete it, show it disappear.</li>
-			<li>Open <code>/docs</code> and run a request directly against the API.</li>
-			<li>Open Postman, run through create/list/update/delete against the deployed URL.</li>
-			<li>Show the Helm chart directory for a few seconds, mention <code>helm install</code>/<code>helm upgrade</code> as how this actually got deployed.</li>
-		</ol>
-		<div class="tip"><strong>Reminder to myself:</strong> narrate as I go &mdash; the rubric grades the voice-over specifically, not just that the steps happened silently on screen.</div>
-
-		<!-- =========================================================
-     PHASE 11 (OPTIONAL)
-     ========================================================= -->
-		<h1>Phase 11 (Optional) &ndash; Swapping in Amazon RDS</h1>
-		<p>The assignment lets me use RDS <em>or</em> any other database &mdash; my in-cluster MySQL Pod already satisfies that, so I'm only doing this if I specifically want to demo RDS on top.</p>
-		<ol>
-			<li>Follow AWS's guide to spin up a MySQL instance (<code>aws.amazon.com/getting-started/hands-on/create-mysql-db/</code>), in Dev/Test or Sandbox mode so I don't rack up charges, and make sure the RDS security group allows inbound 3306 from my cluster's node.</li>
-			<li>The chart currently hardcodes <code>DB_HOST</code> to <code>survey-mysql</code> (the in-cluster Service) in <code>helm/student-survey/templates/backend-deployment.yaml</code>. To point at RDS instead I'd change that to my RDS endpoint and drop the <code>mysql-deployment.yaml</code>/<code>mysql-service.yaml</code>/<code>mysql-pvc.yaml</code> templates, since MySQL would now live outside the cluster.</li>
-			<li>Update the <code>survey-mysql-secret</code> values to match my RDS credentials.</li>
-			<li><code>helm upgrade</code> and confirm <code>/health</code> still comes back <code>{"status": "ok"}</code>.</li>
-		</ol>
-		<div class="note"><strong>Note:</strong> This is a template edit, not a <code>--set</code> override, so I'd treat it as a fork of the chart rather than something I toggle back and forth.</div>
-
-		<!-- =========================================================
-     PHASE 12
-     ========================================================= -->
-		<h1>Phase 12 &ndash; Packaging It Up</h1>
-
-		<h2>Step 23: Double-Check the Grading Checklist</h2>
-		<table>
-			<tr>
-				<th>Item</th>
-				<th>Points / Risk</th>
-			</tr>
-			<tr>
-				<td>Functional requirements + documentation + voice-over video</td>
-				<td>85 pts</td>
-			</tr>
-			<tr>
-				<td>Runs without errors</td>
-				<td>13 pts</td>
-			</tr>
-			<tr>
-				<td>Comments (1&ndash;2 sentences at the top of every source file)</td>
-				<td>2 pts &mdash; already there in every file</td>
-			</tr>
-		</table>
-		<div class="warning">
-			<strong>Things that cost instant points if I forget them:</strong>
-			<ul style="margin: 6px 0 0 0">
-				<li>Source code and config files (Dockerfiles, Helm chart) actually have to be in the zip.</li>
-				<li>The documentation and the video have to be in the package, not just linked somewhere.</li>
-				<li>It has to run without errors &mdash; I'm verifying with a clean <code>helm install</code> before submitting.</li>
-				<li>My name needs to be on every artifact &mdash; already covered by the file-header comments.</li>
-			</ul>
-		</div>
-
-		<h2>Step 24: Build the Zip</h2>
-		<p>I'm zipping my local <code>Repo-v2</code> folder &mdash; the same one I pushed to GitHub, which already excludes <code>node_modules</code>, <code>.venv</code>, and the local SQLite file since those were never in it to begin with. I add the voice-over video file alongside it before zipping.</p>
-
-		<h2>Step 25: Fill In the Live URL</h2>
-		<p>Before zipping, I update the <code>Live URL</code> line at the top of <code>README.md</code> with my actual NodePort URL (e.g. <code>http://ec2-xx-xx-xx-xx.compute-1.amazonaws.com:30080</code>). The assignment wants this in the readme even though the app doesn't have to stay live for grading.</p>
-
-		<h2>Step 26: Submit on Canvas</h2>
-		<p>Upload the zip through the assignment page.</p>
 
 		<!-- =========================================================
      QUICK REFERENCE CARD
@@ -721,7 +611,7 @@ kubectl get svc</pre>
 			</tr>
 			<tr>
 				<td>NodePort 30080 not reachable from my browser</td>
-				<td>Security group inbound rule for TCP 30080 from <code>0.0.0.0/0</code> (Phase 6)</td>
+				<td>Security group inbound rule for TCP 30080 from <code>0.0.0.0/0</code> (Phase 5)</td>
 			</tr>
 			<tr>
 				<td><code>helm install</code> fails: "cannot re-use a name"</td>
